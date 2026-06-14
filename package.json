@@ -1,0 +1,15 @@
+{
+  "name": "graphlib-x",
+  "version": "1.0.0",
+  "description": "Zero-dep graph algorithms library — directed/undirected graphs, BFS/DFS, Dijkstra, A*, topological sort, cycle detection, connectivity, spanning trees",
+  "main": "src/index.js",
+  "bin": {
+    "graphlib": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": ["graph", "bfs", "dfs", "dijkstra", "topological-sort", "cycle-detection", "spanning-tree", "shortest-path", "zero-dependency"],
+  "license": "MIT",
+  "author": "sulthonzh"
+}
