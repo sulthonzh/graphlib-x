@@ -7,38 +7,9 @@
     "graphlib": "src/cli.js"
   },
   "scripts": {
-    "test": "node --test test/*.js"
+    "test": "node --test test/index.test.js"
   },
-  "keywords": [
-    "graph",
-    "bfs",
-    "dfs",
-    "dijkstra",
-    "topological-sort",
-    "cycle-detection",
-    "spanning-tree",
-    "shortest-path",
-    "zero-dependency"
-  ],
+  "keywords": ["graph", "bfs", "dfs", "dijkstra", "topological-sort", "cycle-detection", "spanning-tree", "shortest-path", "zero-dependency"],
   "license": "MIT",
-  "author": "sulthonzh",
-  "files": [
-    "src/",
-    "README.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=18"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sulthonzh/graphlib-x.git"
-  },
-  "homepage": "https://github.com/sulthonzh/graphlib-x",
-  "bugs": {
-    "url": "https://github.com/sulthonzh/graphlib-x/issues"
-  },
-  "publishConfig": {
-    "access": "public"
-  }
+  "author": "sulthonzh"
 }
