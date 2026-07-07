@@ -417,3 +417,277 @@ test('betweennessCentrality: directed graph', () => {
   // A→C is direct (shorter), so B has betweenness 0
   assert.strictEqual(bc.get('B'), 0);
 });
+
+// ─── Edge-case tests (quality audit) ─────────────────────────────────────────
+
+test('Graph: removeNode on empty graph is no-op', () => {
+  const g = new Graph();
+  assert.strictEqual(g.nodeCount, 0);
+  g.removeNode('X');
+  assert.strictEqual(g.nodeCount, 0);
+});
+
+test('Graph: removeNode with no edges is clean', () => {
+  const g = new Graph();
+  g.addNode('A');
+  g.removeNode('A');
+  assert.strictEqual(g.nodeCount, 0);
+  assert.strictEqual(g.edgeCount, 0);
+});
+
+test('Graph: removeNode preserves remaining edges (directed)', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('A', 'C').addEdge('B', 'C').addEdge('C', 'A');
+  g.removeNode('A');
+  assert.strictEqual(g.nodeCount, 2);
+  assert.strictEqual(g.edgeCount, 1); // Only B->C
+  assert.ok(g.hasEdge('B', 'C'));
+  assert.ok(!g.hasEdge('C', 'A'));
+});
+
+test('Graph: removeNode preserves remaining edges (undirected)', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('A', 'C').addEdge('B', 'C');
+  g.removeNode('A');
+  assert.strictEqual(g.nodeCount, 2);
+  assert.strictEqual(g.edgeCount, 1); // Only B-C
+  assert.ok(g.hasEdge('B', 'C'));
+});
+
+test('Graph: double addNode is idempotent', () => {
+  const g = new Graph();
+  g.addNode('A');
+  g.addNode('A');
+  assert.strictEqual(g.nodeCount, 1);
+});
+
+test('Graph: double addEdge is idempotent', () => {
+  const g = new Graph();
+  g.addEdge('A', 'B', 5);
+  g.addEdge('A', 'B', 5);
+  assert.strictEqual(g.edgeCount, 1);
+});
+
+test('Graph: addEdge auto-creates nodes', () => {
+  const g = new Graph();
+  g.addEdge('X', 'Y', 3);
+  assert.strictEqual(g.nodeCount, 2);
+  assert.ok(g.hasNode('X'));
+  assert.ok(g.hasNode('Y'));
+});
+
+test('Graph: edges from neighbors() include weight', () => {
+  const g = new Graph();
+  g.addEdge('A', 'B', 7);
+  const edges = g.edges('A');
+  assert.strictEqual(edges[0].weight, 7);
+  assert.strictEqual(edges.length, 1);
+});
+
+test('Graph: neighbors of isolated node is empty', () => {
+  const g = new Graph();
+  g.addNode('Lonely');
+  assert.deepStrictEqual([...g.neighbors('Lonely')], []);
+});
+
+test('Graph: hasNode returns false for never-added nodes', () => {
+  const g = new Graph();
+  assert.ok(!g.hasNode('Ghost'));
+});
+
+test('dijkstra: unreachable nodes get Infinity distance', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B');
+  g.addNode('C'); // Isolated
+  const { dist } = dijkstra(g, 'A');
+  assert.strictEqual(dist.get('A'), 0);
+  assert.strictEqual(dist.get('B'), 1);
+  assert.strictEqual(dist.get('C'), Infinity);
+});
+
+test('dijkstra: single node graph', () => {
+  const g = new Graph();
+  g.addNode('Solo');
+  const { dist } = dijkstra(g, 'Solo');
+  assert.strictEqual(dist.get('Solo'), 0);
+});
+
+test('shortestPath: returns null when no path exists', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B');
+  g.addNode('C');
+  const path = shortestPath(g, 'A', 'C');
+  assert.strictEqual(path, null);
+});
+
+test('shortestPath: same start and end returns single element', () => {
+  const g = new Graph();
+  g.addNode('A');
+  const path = shortestPath(g, 'A', 'A');
+  assert.deepStrictEqual(path, ['A']);
+});
+
+test('bellmanFord: detects negative cycle', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B', 1);
+  g.addEdge('B', 'C', -3);
+  g.addEdge('C', 'A', 1);
+  const { hasNegativeCycle } = bellmanFord(g, 'A');
+  assert.ok(hasNegativeCycle);
+});
+
+test('bellmanFord: no negative cycle in positive graph', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B', 1).addEdge('B', 'C', 2);
+  const { hasNegativeCycle } = bellmanFord(g, 'A');
+  assert.ok(!hasNegativeCycle);
+});
+
+test('floydWarshall: handles disconnected nodes', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B', 3);
+  g.addNode('C'); // Isolated
+  const { dist } = floydWarshall(g);
+  assert.strictEqual(dist.get('A').get('B'), 3);
+  assert.strictEqual(dist.get('A').get('C'), Infinity);
+  assert.strictEqual(dist.get('C').get('C'), 0);
+});
+
+test('topologicalSort: single node', () => {
+  const g = new Graph({ directed: true });
+  g.addNode('A');
+  const order = topologicalSort(g);
+  assert.deepStrictEqual(order, ['A']);
+});
+
+test('topologicalSort: linear chain', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('C', 'D');
+  const order = topologicalSort(g);
+  assert.deepStrictEqual(order, ['A', 'B', 'C', 'D']);
+});
+
+test('topologicalSort: returns null on cyclic graph', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('B', 'A');
+  const result = topologicalSort(g);
+  assert.strictEqual(result, null);
+});
+
+test('hasCycle: directed cycle detected', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('C', 'A');
+  assert.ok(hasCycle(g));
+});
+
+test('hasCycle: DAG has no cycle', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('A', 'C').addEdge('B', 'D').addEdge('C', 'D');
+  assert.ok(!hasCycle(g));
+});
+
+test('connectedComponents: undirected triangle + isolated', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('A', 'C');
+  g.addNode('D'); // Isolated
+  const comps = connectedComponents(g);
+  assert.strictEqual(comps.length, 2);
+  const sizes = comps.map(c => c.length).sort();
+  assert.deepStrictEqual(sizes, [1, 3]);
+});
+
+test('connectedComponents: directed graph weakly connected', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('C', 'B'); // A->B<-C
+  const comps = connectedComponents(g);
+  assert.strictEqual(comps.length, 1);
+});
+
+test('kruskalMST: single edge', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B', 5);
+  const mst = kruskalMST(g);
+  assert.strictEqual(mst.weight, 5);
+  assert.strictEqual(mst.edges.length, 1);
+});
+
+test('primMST: single edge', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B', 5);
+  const mst = primMST(g);
+  assert.strictEqual(mst.weight, 5);
+});
+
+test('maxFlow: simple two-path', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('S', 'A', 3);
+  g.addEdge('S', 'B', 2);
+  g.addEdge('A', 'T', 2);
+  g.addEdge('B', 'T', 3);
+  const result = maxFlow(g, 'S', 'T');
+  assert.strictEqual(result.maxFlow, 4);
+});
+
+test('isBipartite: triangle is not bipartite', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('A', 'C');
+  const result = isBipartite(g);
+  assert.ok(!result.bipartite);
+});
+
+test('isBipartite: even cycle is bipartite', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('C', 'D').addEdge('D', 'A');
+  const result = isBipartite(g);
+  assert.ok(result.bipartite);
+});
+
+test('bfs: visits all nodes in correct order', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('A', 'C').addEdge('B', 'D');
+  const { visited } = bfs(g, 'A');
+  assert.ok(visited.has('A'));
+  assert.ok(visited.has('B'));
+  assert.ok(visited.has('C'));
+  assert.ok(visited.has('D'));
+});
+
+test('dfs: visits all reachable nodes', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('A', 'D');
+  const { visited } = dfs(g, 'A');
+  assert.strictEqual(visited.size, 4);
+});
+
+test('reconstructPath: returns null for unreachable target', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B');
+  g.addNode('C');
+  const { parent } = bfs(g, 'A');
+  const path = reconstructPath(parent, 'A', 'C');
+  assert.strictEqual(path, null);
+});
+
+test('aStar: finds optimal path with heuristic', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('S', 'M', 1).addEdge('M', 'T', 1).addEdge('S', 'T', 3);
+  const heur = (n) => (n === 'S' ? 2 : n === 'M' ? 1 : 0);
+  const path = aStar(g, 'S', 'T', heur);
+  assert.deepStrictEqual(path, ['S', 'M', 'T']);
+});
+
+test('Graph: allEdges returns correct count for undirected', () => {
+  const g = new Graph({ directed: false });
+  g.addEdge('A', 'B').addEdge('B', 'C');
+  // Undirected: each edge stored in both directions
+  const edges = g.allEdges();
+  assert.strictEqual(edges.length, 4); // 2 edges * 2 directions
+});
+
+test('stronglyConnectedComponents: simple cycle', () => {
+  const g = new Graph({ directed: true });
+  g.addEdge('A', 'B').addEdge('B', 'C').addEdge('C', 'A');
+  const sccs = stronglyConnectedComponents(g);
+  assert.strictEqual(sccs.length, 1);
+  assert.strictEqual(sccs[0].length, 3);
+});

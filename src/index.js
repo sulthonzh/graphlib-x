@@ -66,7 +66,7 @@ class Graph {
     }
     // Remove outgoing edges
     const outCount = this._adj.get(id).size;
-    this._edgeCount -= this.directed ? outCount : Math.ceil(outCount / 1);
+    this._edgeCount -= outCount;
     this._adj.delete(id);
     this._nodes.delete(id);
     return this;
@@ -341,7 +341,7 @@ function bellmanFord(graph, start) {
   }
   dist.set(start, 0);
   const V = graph.nodeCount;
-  const edgeList = graph.directed ? graph.allEdges() : graph.allEdges();
+  const edgeList = graph.allEdges();
   // Relax V-1 times
   for (let i = 0; i < V - 1; i++) {
     let changed = false;
@@ -637,9 +637,6 @@ function connectedComponents(graph) {
   const components = [];
   for (const node of graph.nodes()) {
     if (!visited.has(node)) {
-      const { visited: comp } = bfs(graph, node);
-      const comp2 = [...comp].filter(n => !visited.has(n));
-      // Re-run from node to get just this component properly
       const compNodes = [];
       const queue = [node];
       visited.add(node);

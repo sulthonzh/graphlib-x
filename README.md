@@ -215,7 +215,7 @@ const route = shortestPath(network, 'router1', 'router3');
 npm test
 ```
 
-46 tests, zero dependencies.
+81 tests, zero dependencies.
 
 ## License
 
