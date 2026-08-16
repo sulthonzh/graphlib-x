@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -10,6 +11,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
